@@ -43,8 +43,8 @@ class Account(AbstractBaseUser):
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     username = models.CharField(max_length=50,unique=True)
-    email = models.CharField(max_length=100,unique=True)
-    Phone_Number = models.CharField(max_length=50)
+    email = models.EmailField(max_length=100,unique=True)
+    phone_number = models.CharField(max_length=50)
 
     #Mandatory/required fields
     date_joined = models.DateField(auto_now_add=True)
