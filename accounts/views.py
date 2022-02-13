@@ -41,8 +41,8 @@ def register(request):
             to_email = email
             send_email = EmailMessage(email_subject,message,to=[to_email])
             send_email.send()
-            messages.success(request, 'Registration is success!')
-            return redirect('register')
+            #messages.success(request, 'We sent you verfication link to your registered email id. Please verify from there!')
+            return redirect('/accounts/login/?command=verification&email='+email)
     else:
         form = RegistrationForm()
     context = {'form':form,}
@@ -56,8 +56,8 @@ def login(request):
         print(user)
         if user is not None:
             auth.login(request,user)
-            print('Sucess login')
-            return redirect('home')
+            messages.success(request, 'You are logged in!')
+            return redirect('dashboard')
         else:
             print('Error login')
             messages.error(request, 'Invalid credential. Please try again!')
@@ -72,4 +72,49 @@ def logout(request):
     return redirect('login')
 
 def activate(request, uidb64, token):
-    return HttpResponse("OK")
+    try:
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = Account._default_manager.get(pk=uid)
+    except(TypeError,ValueError,OverFlowError,Account.DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        user.is_active = True
+        user.save()
+        messages.success(request, 'Congratulation! You account is activated.')
+        return redirect('login')
+    else:
+        messages.success(request, 'Invalid verfication link')
+        return redirect('register')
+
+@login_required(login_url = 'login')
+def dashboard(request):
+    return render(request,"accounts/dashboard.html")
+
+
+def forgotpassword(request):
+    if request.method == 'POST':
+        email = request.POST['email']
+        if Account.objects.filter(email=email).exists():
+            user = Account.objects.get(email__exact=email)
+            # forgot password
+            current_site = get_current_site(request)
+            email_subject = 'Reset your password'
+            message = render_to_string('accounts/reset_password_email.html',{
+            'user': user,
+            'domain': current_site,
+            'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+            'token': default_token_generator.make_token(user),
+            })
+            to_email = email
+            send_email = EmailMessage(email_subject,message,to=[to_email])
+            send_email.send()
+            messages.success(request, 'Password reset link has been sent you your email address.')
+            return redirect('login')
+        else:
+            messages.error(request,'Email does not exists!')
+            return redirect('forgotpassword')
+    return render(request,"accounts/forgotpassword.html")
+
+def reset_password_validate(request):
+    return render(request,"accounts/dashboard.html")
